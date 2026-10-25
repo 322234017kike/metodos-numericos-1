@@ -765,29 +765,95 @@ table.matriz { border-collapse: collapse; font-family: var(--mono); font-size: .
    Transiciones entre pantallas
    ============================================================ */
 
-.hoja.entrando { animation: entrar .45s var(--curva) both; }
-.hoja.entrando-atras { animation: entrar-atras .45s var(--curva) both; }
-.hoja.saliendo { animation: salir .22s ease-in forwards; pointer-events: none; }
-.hoja.saliendo-atras { animation: salir-atras .22s ease-in forwards; pointer-events: none; }
+/* La hoja nueva entra deslizándose con un pequeño rebote; la anterior sale desenfocándose. */
+.hoja.entrando { animation: entrar .7s var(--rebote) both; }
+.hoja.entrando-atras { animation: entrar-atras .7s var(--rebote) both; }
+.hoja.saliendo { animation: salir .34s cubic-bezier(.5, 0, .75, 0) forwards; pointer-events: none; }
+.hoja.saliendo-atras { animation: salir-atras .34s cubic-bezier(.5, 0, .75, 0) forwards; pointer-events: none; }
+:root { --rebote: cubic-bezier(.34, 1.4, .64, 1); }
 
-@keyframes entrar { from { opacity: 0; transform: translateX(36px) scale(.985); } }
-@keyframes entrar-atras { from { opacity: 0; transform: translateX(-36px) scale(.985); } }
-@keyframes salir { to { opacity: 0; transform: translateX(-36px) scale(.985); } }
-@keyframes salir-atras { to { opacity: 0; transform: translateX(36px) scale(.985); } }
+@keyframes entrar {
+  from { opacity: 0; transform: translateX(140px) rotateY(-10deg) scale(.92); filter: blur(8px); }
+  60% { filter: blur(0); }
+}
+@keyframes entrar-atras {
+  from { opacity: 0; transform: translateX(-140px) rotateY(10deg) scale(.92); filter: blur(8px); }
+  60% { filter: blur(0); }
+}
+@keyframes salir { to { opacity: 0; transform: translateX(-120px) rotateY(8deg) scale(.9); filter: blur(6px); } }
+@keyframes salir-atras { to { opacity: 0; transform: translateX(120px) rotateY(-8deg) scale(.9); filter: blur(6px); } }
+#app { perspective: 1600px; }
+
+/* Cortina de color que barre la pantalla al cambiar de sección */
+.cortina {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background: linear-gradient(110deg, var(--azul) 0%, var(--acento) 55%, var(--oro) 100%);
+  transform-origin: left center;
+  animation: cortina .78s cubic-bezier(.77, 0, .18, 1) forwards;
+}
+.cortina.atras { transform-origin: right center; animation-name: cortina-atras; }
+.cortina::after {
+  content: "Σ";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 700 clamp(4rem, 14vw, 9rem)/1 Georgia, serif;
+  color: rgb(255 255 255 / .9);
+  animation: cortina-logo .78s ease-in-out forwards;
+}
+@keyframes cortina {
+  0% { transform: scaleX(0); }
+  45%, 55% { transform: scaleX(1); transform-origin: left center; }
+  56% { transform-origin: right center; }
+  100% { transform: scaleX(0); transform-origin: right center; }
+}
+@keyframes cortina-atras {
+  0% { transform: scaleX(0); }
+  45%, 55% { transform: scaleX(1); transform-origin: right center; }
+  56% { transform-origin: left center; }
+  100% { transform: scaleX(0); transform-origin: left center; }
+}
+@keyframes cortina-logo {
+  0%, 25% { opacity: 0; transform: scale(.4) rotate(-90deg); }
+  50% { opacity: 1; transform: scale(1) rotate(0); }
+  75%, 100% { opacity: 0; transform: scale(1.6) rotate(20deg); }
+}
 
 /* Elementos que aparecen uno tras otro */
-.aparece { animation: aparecer .5s var(--curva) both; animation-delay: calc(var(--i, 0) * 70ms + 150ms); }
-@keyframes aparecer { from { opacity: 0; transform: translateY(14px); } }
+.aparece { animation: aparecer .65s var(--rebote) both; animation-delay: calc(var(--i, 0) * 110ms + 300ms); }
+@keyframes aparecer { from { opacity: 0; transform: translateY(40px) scale(.9); } }
 
-/* Opción elegida: pulso con el color de la unidad */
-.elegido { animation: elegir .32s var(--curva) both !important; }
-.tarjeta.elegido, .fila-metodo.elegido { border-color: var(--acento); box-shadow: 0 0 0 6px color-mix(in srgb, var(--acento) 25%, transparent), var(--sombra-3); }
-.boton.elegido { box-shadow: 0 0 0 6px color-mix(in srgb, var(--acento) 25%, transparent); }
+/* Opción elegida: se hunde, rebota y brilla con el color de la unidad */
+.elegido { animation: elegir .45s var(--rebote) both !important; z-index: 2; }
+.tarjeta.elegido, .fila-metodo.elegido {
+  border-color: var(--acento);
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--acento) 30%, transparent), 0 20px 50px color-mix(in srgb, var(--acento) 45%, transparent);
+}
+.boton.elegido { box-shadow: 0 0 0 8px color-mix(in srgb, var(--acento) 30%, transparent); }
 @keyframes elegir {
   0% { transform: scale(1); }
-  40% { transform: scale(.96); }
-  100% { transform: scale(1.03); }
+  35% { transform: scale(.9); }
+  100% { transform: scale(1.08); }
 }
+
+/* Onda que se expande desde el punto del clic */
+.onda-clic {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--acento) 45%, transparent);
+  animation: onda-clic .65s ease-out forwards;
+}
+.boton.primario .onda-clic { background: rgb(255 255 255 / .55); }
+@keyframes onda-clic { to { transform: scale(30); opacity: 0; } }
+.tarjeta, .fila-metodo, .boton { position: relative; overflow: hidden; }
 
 /* Error: sacudida breve */
 .sacudir { animation: sacudir .4s ease-in-out; }

@@ -21,7 +21,7 @@ const resultados = {};
 
 // ---------------- Transiciones ----------------
 
-const DURACION_SALIDA = 220;
+const DURACION_SALIDA = 380; // la cortina cubre la pantalla en este momento; ahí se cambia de hoja
 const sinMovimiento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Qué tan "adentro" del flujo está una ruta; decide si la animación avanza o regresa. */
@@ -50,8 +50,39 @@ function ir(ruta, origen) {
   const atras = profundidad(ruta) < profundidad(location.hash);
   hojaActual?.classList.remove('entrando', 'entrando-atras');
   hojaActual?.classList.add(atras ? 'saliendo-atras' : 'saliendo');
-  setTimeout(() => { navegando = false; location.hash = ruta; }, origen ? DURACION_SALIDA + 80 : DURACION_SALIDA);
+  barrerCortina(ruta, atras);
+  setTimeout(() => { navegando = false; location.hash = ruta; }, DURACION_SALIDA);
 }
+
+/** Número de unidad al que pertenece una ruta (para pintar la cortina con su color). */
+function unidadDeRuta(ruta) {
+  const [seccion, a] = ruta.replace(/^#\/?/, '').split('/');
+  if (seccion === 'unidad') return Number(a) || null;
+  if (seccion === 'metodo' && Object.hasOwn(METODOS, a ?? '')) return METODOS[a].unidad;
+  return null;
+}
+
+/** Cortina de color que cruza la pantalla mientras cambia la hoja. */
+function barrerCortina(ruta, atras) {
+  const n = unidadDeRuta(ruta);
+  const cortina = h('div', { class: `cortina${atras ? ' atras' : ''}${n ? ` u${n}` : ''}`, 'aria-hidden': 'true' });
+  document.body.append(cortina);
+  const quitar = () => cortina.remove();
+  cortina.addEventListener('animationend', (e) => { if (e.target === cortina) quitar(); });
+  setTimeout(quitar, 1200); // por si el navegador no dispara animationend
+}
+
+// Onda que se expande desde el punto donde se hace clic en tarjetas, filas y botones.
+app.addEventListener('pointerdown', (e) => {
+  const el = e.target.closest('.tarjeta, .fila-metodo, .boton');
+  if (!el || sinMovimiento()) return;
+  const r = el.getBoundingClientRect();
+  const onda = h('span', { class: 'onda-clic', 'aria-hidden': 'true' });
+  onda.style.left = `${e.clientX - r.left}px`;
+  onda.style.top = `${e.clientY - r.top}px`;
+  el.append(onda);
+  setTimeout(() => onda.remove(), 700);
+});
 
 // Los enlaces internos también pasan por la transición.
 app.addEventListener('click', (e) => {
