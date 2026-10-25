@@ -57,3 +57,9 @@ Los scripts son clásicos (no módulos) para que la página funcione desde `file
 - Martínez González Enrique René
 
 Noviembre 2026 · Derechos Reservados MMXXVI UNAM
+
+## Licencia
+
+© 2026 Espinosa Martínez Iván, Huesca Martínez José Arturo y Martínez González Enrique René. **Todos los derechos reservados.**
+
+Se permite usar el sistema para estudio personal y revisarlo con fines de evaluación académica. No se permite copiar, modificar, redistribuir ni presentar este trabajo como propio sin autorización escrita de los autores. Consulta los términos completos en [LICENSE](LICENSE).
