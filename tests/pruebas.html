@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pruebas MetNum I</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; background: #fff; color: #222; }
+    li.ok { color: #1b7a3a; }
+    li.mal { color: #b3261e; }
+  </style>
+</head>
+<body>
+  <h1>Pruebas de los métodos</h1>
+  <p id="resumen">Ejecutando…</p>
+  <ul id="lista"></ul>
+  <script src="../js/metodos/util.js"></script>
+  <script src="../js/metodos/error.js"></script>
+  <script src="../js/metodos/raices.js"></script>
+  <script src="../js/metodos/lineales.js"></script>
+  <script src="../js/metodos/lu.js"></script>
+  <script src="../js/metodos/propios.js"></script>
+  <script src="metodos.test.js"></script>
+  <script>
+    const resultados = MN.pruebas;
+    const lista = document.getElementById('lista');
+    for (const r of resultados) {
+      const li = document.createElement('li');
+      li.className = r.ok ? 'ok' : 'mal';
+      li.textContent = `${r.ok ? '✔' : '✘'} ${r.nombre}${r.detalle ? ' — ' + r.detalle : ''}`;
+      lista.append(li);
+    }
+    const fallas = resultados.filter((r) => !r.ok).length;
+    document.getElementById('resumen').textContent = `${resultados.length - fallas} de ${resultados.length} pruebas correctas`;
+    window.resultadosPruebas = resultados;
+  </script>
+</body>
+</html>
