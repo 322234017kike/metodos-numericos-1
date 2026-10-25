@@ -20,7 +20,7 @@ const INTRO = [
 ];
 
 const tolerancia = (valor = '1e-6') => ({ clave: 'tol', etiqueta: 'Tolerancia', tipo: 'numero', valor });
-const maxIter = (valor = '50') => ({ clave: 'maxIter', etiqueta: 'Máximo de iteraciones', tipo: 'entero', valor });
+const maxIter = (valor = '50') => ({ clave: 'maxIter', etiqueta: 'Máximo de iteraciones', tipo: 'entero', valor, max: 10000 });
 const funcion = (valor = 'x^3 - 2*x - 5') => ({ clave: 'f', etiqueta: 'f(x) =', tipo: 'funcion', valor });
 const matriz = (valor, etiqueta = 'Matriz A') => ({ clave: 'A', etiqueta, tipo: 'matriz', valor });
 const vector = (clave, etiqueta, valor) => ({ clave, etiqueta, tipo: 'vector', valor, de: 'A' });

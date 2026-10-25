@@ -275,6 +275,7 @@ a { color: var(--acento); }
   border: 1px solid var(--borde);
   background: var(--hoja);
   color: var(--texto);
+  text-decoration: none;
   cursor: pointer;
   transition: transform .18s var(--curva), box-shadow .2s, border-color .2s, background .2s;
 }

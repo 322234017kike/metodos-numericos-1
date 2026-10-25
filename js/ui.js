@@ -11,6 +11,7 @@ function h(tag, attrs = {}, ...hijos) {
     if (v == null || v === false) continue;
     if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
     else if (k === 'class') el.className = v;
+    else if (k === 'style') el.style.cssText = v; // vía CSSOM: lo permite la política de seguridad (CSP)
     else el.setAttribute(k, v === true ? '' : v);
   }
   for (const hijo of hijos.flat(Infinity)) {
@@ -169,7 +170,7 @@ function grafica(f, x0, x1, puntos = [], raiz) {
   if (x0 <= 0 && x1 >= 0) add('line', { x1: px(0), x2: px(0), y1: M, y2: H - M, class: 'eje' });
   add('path', { d, class: 'curva', pathLength: 1 });
   puntos.filter((x) => Number.isFinite(x) && x >= x0 && x <= x1)
-    .forEach((x, i) => add('circle', { cx: px(x), cy: py(0), r: 4, class: 'iterado', style: `opacity:${0.35 + (0.65 * (i + 1)) / puntos.length}` }));
+    .forEach((x, i) => add('circle', { cx: px(x), cy: py(0), r: 4, class: 'iterado', opacity: 0.35 + (0.65 * (i + 1)) / puntos.length }));
   if (Number.isFinite(raiz) && raiz >= x0 && raiz <= x1) add('circle', { cx: px(raiz), cy: py(0), r: 6, class: 'raiz' });
   add('text', { x: M, y: H - 10, class: 'etiqueta' }, formatoNumero(x0));
   add('text', { x: W - M, y: H - 10, class: 'etiqueta', 'text-anchor': 'end' }, formatoNumero(x1));

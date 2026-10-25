@@ -350,6 +350,7 @@ function interpretar(m, c) {
       case 'entero': {
         const x = evaluarNumero(crudo, nombre);
         if (!Number.isInteger(x)) falla(`${nombre} debe ser un número entero.`);
+        if (p.max !== undefined && x > p.max) falla(`${nombre} no puede ser mayor que ${p.max}.`);
         v[p.clave] = x;
         break;
       }
@@ -498,7 +499,8 @@ function pantalla(ruta) {
     case 'salir': return salir();
     case 'unidad': return b === 'metodos' ? metodosDeUnidad(Number(a)) : unidad(Number(a));
     case 'metodo':
-      if (!METODOS[a]) return noEncontrado();
+      // hasOwn: rutas como #/metodo/constructor no deben tomar propiedades heredadas del objeto
+      if (!Object.hasOwn(METODOS, a ?? '')) return noEncontrado();
       if (b === 'ejemplo') return ejemplo(a);
       if (b === 'tabla') return tabla(a);
       return teoria(a);
@@ -519,7 +521,15 @@ function render() {
   document.title = titulo ? `${titulo} · ${CONFIG.sistema}` : CONFIG.sistema;
 }
 
-window.addEventListener('hashchange', render);
-render();
+// Protección contra "clickjacking": no se deja mostrar dentro de un marco (iframe) de otro sitio.
+if (window.top !== window.self) {
+  app.replaceChildren(hoja({ clase: 'salida' },
+    h('h1', {}, 'MetNum I'),
+    h('p', {}, 'Por seguridad, este sistema no puede mostrarse dentro de otra página.'),
+    h('a', { href: location.href, target: '_top', rel: 'noopener', class: 'boton primario' }, 'Abrir en su propia ventana')));
+} else {
+  window.addEventListener('hashchange', render);
+  render();
+}
 
 })();

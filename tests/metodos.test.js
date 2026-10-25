@@ -145,6 +145,50 @@ prueba('Orden de convergencia de Newton ≈ 2', () => {
   cerca(valor(errores.ordenConvergencia({ sucesion: suc, limite: Math.SQRT2 }), 'Orden estimado p'), 2, 0.15);
 });
 
+// ---- Intérprete de expresiones ----
+const ex = MN.expresiones;
+
+prueba('Evalúa funciones', () => {
+  cerca(ex.compilarFuncion('x^3 - 2*x - 5')(2), -1, 1e-15);
+  cerca(ex.compilarFuncion('2x + 3(x - 1)')(2), 7, 1e-15, 'multiplicación implícita:');
+  cerca(ex.compilarFuncion('-x^2')(3), -9, 1e-15, 'precedencia de −x²:');
+  cerca(ex.compilarFuncion('2^3^2')(0), 512, 1e-12, 'potencia asociativa a la derecha:');
+  cerca(ex.compilarFuncion('exp(-x) - x')(0), 1, 1e-15);
+  cerca(ex.compilarFuncion('ln(e) + log10(100) + sqrt(16) + abs(-2) + cos(pi)')(0), 1 + 2 + 4 + 2 - 1, 1e-12);
+});
+prueba('Evalúa números', () => {
+  cerca(ex.evaluarNumero('pi/4', 'n'), Math.PI / 4, 1e-15);
+  cerca(ex.evaluarNumero('1e-6', 'n'), 1e-6, 0);
+  vectorCerca(ex.evaluarLista('1, -3.5, pi / 2', 'lista'), [1, -3.5, Math.PI / 2], 1e-15);
+});
+prueba('Derivada simbólica', () => {
+  const d = ex.derivar('x^3 - 2*x - 5');
+  if (d.texto !== '3 * x^2 - 2') throw new Error(`texto: ${d.texto}`);
+  cerca(d.df(2), 10, 1e-12);
+  cerca(ex.derivar('sin(x) * exp(x)').df(0), 1, 1e-12, "(sin·exp)'(0):");
+  cerca(ex.derivar('x^x').df(1), 1, 1e-12, "(x^x)'(1):");
+  cerca(ex.derivar('ln(x^2 + 1)').df(1), 1, 1e-12, "(ln(x²+1))'(1):");
+  cerca(ex.derivar('sqrt(x) / x').df(4), -1 / 16, 1e-12, "(√x/x)'(4):");
+  cerca(ex.derivar('2^x').df(0), Math.LN2, 1e-12, "(2^x)'(0):");
+});
+prueba('Seguridad: se rechaza código en lugar de matemáticas', () => {
+  const ataques = ['alert(1)', 'constructor', '__proto__', 'this', 'window.location', 'x; fetch("http://a")',
+    '`x`', 'x[0]', 'x=1', '"x"', 'Function("return 1")()', 'x => x', 'eval(x)', 'process', 'document.cookie'];
+  for (const a of ataques) {
+    let rechazado = false;
+    try { ex.compilarFuncion(a); } catch (e) { rechazado = e instanceof ErrorMetodo; }
+    if (!rechazado) throw new Error(`No se rechazó: ${a}`);
+    rechazado = false;
+    try { ex.evaluarNumero(a, 'n'); } catch (e) { rechazado = e instanceof ErrorMetodo; }
+    if (!rechazado) throw new Error(`No se rechazó como número: ${a}`);
+  }
+});
+prueba('Seguridad: entradas enormes se rechazan sin congelar la página', () => {
+  lanza(() => ex.compilarFuncion('x+'.repeat(200) + 'x'));
+  lanza(() => ex.compilarFuncion('('.repeat(100) + 'x' + ')'.repeat(100)));
+  lanza(() => ex.evaluarLista(Array(60).fill('1').join(','), 'lista'));
+});
+
 MN.pruebas = resultados;
 
 })();
