@@ -40,9 +40,9 @@ function biseccion({ f, a, b, tol, maxIter }) {
 
   const columnas = ['n', 'a', 'b', 'xr = (a+b)/2', 'f(a)', 'f(xr)', 'f(a)·f(xr)', 'Error rel.'];
   const filas = [];
-  let xr = a, anterior = NaN;
+  let xr = a;
   for (let n = 1; n <= maxIter; n++) {
-    anterior = xr;
+    const anterior = xr;
     xr = (a + b) / 2;
     const fxr = validarFinito(f(xr), `f(${xr})`);
     const err = n === 1 ? NaN : errorRelativo(xr, anterior);

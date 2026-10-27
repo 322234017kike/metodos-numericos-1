@@ -130,7 +130,6 @@ function factorizarQR(A) {
 /** 5.3 Iteración QR: A_{k+1} = R_k·Q_k converge a una matriz triangular con los valores propios en la diagonal. */
 function iteracionQR({ A, tol, maxIter }) {
   validarCuadrada(A);
-  const n = A.length;
   let M = copiar(A);
   const columnas = ['k', ...A.map((_, i) => `a${i + 1}${i + 1}`), 'máx |subdiagonal|'];
   const subdiag = (B) => B.reduce((m, f, i) => (i > 0 ? Math.max(m, Math.abs(f[i - 1])) : m), 0);
