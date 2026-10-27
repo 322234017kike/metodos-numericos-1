@@ -181,7 +181,6 @@ function grafica(f, x0, x1, puntos = [], raiz) {
 // ---------------- Íconos (trazos de 24×24) ----------------
 
 const ICONOS = {
-  error: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
   raices: '<path d="M3 13h18"/><path d="M4 20c3-12 6-14 8-7s5 5 8-9"/><circle cx="10.4" cy="13" r="1.6" fill="currentColor"/>',
   sistemas: '<path d="M7 4H4v16h3"/><path d="M17 4h3v16h-3"/><path d="M8.5 9h7M8.5 12h7M8.5 15h7"/>',
   lu: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 20 20 4"/><path d="M4 20V4h0l16 0Z" fill="currentColor" opacity=".18" stroke="none"/>',

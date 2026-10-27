@@ -8,7 +8,6 @@ const raices = MN.raices;
 const lineales = MN.lineales;
 const lu = MN.lu;
 const propios = MN.propios;
-const errores = MN.error;
 const { multiplicar, ErrorMetodo } = MN.util;
 
 const resultados = [];
@@ -127,22 +126,6 @@ prueba('Householder conserva traza y tridiagonaliza', () => {
 prueba('Iteración QR', () => {
   const ls = propios.iteracionQR({ A: P, tol: 1e-12, maxIter: 500 }).resultado.map((x) => x.valor).sort((a, b) => b - a);
   vectorCerca(ls, [11, 2, 1], 1e-8);
-});
-
-// ---- Unidad 1 ----
-prueba('Error absoluto y relativo', () => {
-  const r = errores.erroresAbsRel({ real: Math.PI, aprox: 3.1416 });
-  cerca(valor(r, 'Error absoluto Ea = |p − p*|'), 7.346410206832132e-6, 1e-15);
-  // Burden: t es el mayor entero con Er ≤ 5·10^(−t); Er ≈ 2.34e−6 → t = 6
-  if (valor(r, 'Cifras significativas correctas') !== 6) throw new Error('Se esperaban 6 cifras significativas');
-});
-prueba('Épsilon de máquina', () => cerca(valor(errores.epsilonMaquina({ base: 2 }), 'Épsilon de máquina calculado'), Number.EPSILON, 0));
-prueba('Truncamiento de Taylor', () => cerca(valor(errores.truncamientoTaylor({ x: 1, terminos: 15 }), 'Aproximación con 15 términos'), Math.E, 1e-10));
-prueba('Propagación', () => { if (errores.propagacion({ x: 2, ex: 0.01, y: 3, ey: 0.01 }).filas.length !== 4) throw new Error('Faltan operaciones'); });
-prueba('Orden de convergencia de Newton ≈ 2', () => {
-  const r = raices.newton({ f: (x) => x * x - 2, df: (x) => 2 * x, x0: 1, tol: 1e-15, maxIter: 6 });
-  const suc = [1, ...r.filas.map((fila) => fila[4])].slice(0, 5);
-  cerca(valor(errores.ordenConvergencia({ sucesion: suc, limite: Math.SQRT2 }), 'Orden estimado p'), 2, 0.15);
 });
 
 // ---- Intérprete de expresiones ----

@@ -412,7 +412,7 @@ a { color: var(--acento); }
 
 .tarjetas {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* II–III / IV–V y "Salir" a todo lo ancho */
   gap: 16px;
   margin: 22px 0 8px;
 }
@@ -453,7 +453,20 @@ a { color: var(--acento); }
 .conteo { margin-top: auto; display: flex; align-items: center; gap: 6px; font-size: .88rem; color: var(--tenue); font-weight: 700; }
 .conteo .icono { transition: transform .25s var(--curva); color: var(--acento); }
 .tarjeta:hover .conteo .icono { transform: translateX(5px); }
-.tarjeta-salir { --acento: var(--tenue); background: var(--superficie); border-style: dashed; }
+.tarjeta-salir {
+  --acento: var(--tenue);
+  grid-column: 1 / -1;
+  min-height: 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  background: var(--superficie);
+  border-style: dashed;
+}
+.tarjeta-salir .etiqueta-unidad { margin-top: 0; }
+.tarjeta-salir .conteo { margin: 0 0 0 auto; }
+@media (max-width: 600px) { .tarjetas { grid-template-columns: 1fr; } }
 
 /* Campo "Opción" */
 .opcion {

@@ -22,11 +22,12 @@ Funciona igual con o sin internet: las funciones se interpretan con un intérpre
 
 Recomendaciones para quien publique el sitio: activar la verificación en dos pasos en GitHub, no compartir tokens de acceso y servirlo por HTTPS (GitHub Pages lo hace automáticamente).
 
-## Contenido (temario completo)
+## Contenido
+
+El menú sigue el del proyecto: unidades II a V y la opción VI para salir.
 
 | Unidad | Métodos |
 |---|---|
-| I. Análisis de error | Error absoluto y relativo, punto flotante y épsilon de máquina, truncamiento (Taylor), propagación del error, cancelación catastrófica, orden de convergencia |
 | II. Ecuaciones de una variable | Bisección, falsa posición, Newton-Raphson, secante, Bairstow |
 | III. Sistemas de ecuaciones lineales | Inversión (Gauss-Jordan), método de intercambio, Gauss con pivoteo parcial, Gauss-Jordan con pivoteo total, Gauss-Jordan particionado, mejoramiento iterativo, Jacobi, Gauss-Seidel, relajación (SOR) |
 | IV. Factorización LU | Fundamentos LU, Cholesky, Doolittle, Crout para sistemas bandados |

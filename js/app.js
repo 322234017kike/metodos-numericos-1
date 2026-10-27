@@ -13,11 +13,12 @@ const { h, icono, vistaValor, vistaTabla, vistaMatriz, editorMatriz, editorVecto
 
 const app = document.getElementById('app');
 const LETRAS = 'abcdefghijklmnopqrstuvwxyz';
-const ICONO_UNIDAD = { 1: 'error', 2: 'raices', 3: 'sistemas', 4: 'lu', 5: 'propios' };
+const ICONO_UNIDAD = { 2: 'raices', 3: 'sistemas', 4: 'lu', 5: 'propios' };
 
 // Datos capturados (como texto) y último resultado de cada método.
-const capturas = {};
-const resultados = {};
+// Map y no objeto: la clave viene de la URL y un id como "__proto__" no debe tocar Object.prototype.
+const capturas = new Map();
+const resultados = new Map();
 
 // ---------------- Transiciones ----------------
 
@@ -297,7 +298,7 @@ function menu() {
     h('h1', {}, 'Menú principal'),
     h('p', { class: 'tenue' }, 'Elige una unidad para estudiar sus métodos.'),
     h('nav', { class: 'tarjetas', 'aria-label': 'Unidades' }, escalonar(tarjetas)),
-    campoOpcion(opciones, 'Escribe I–VI o 1–6 y presiona Enter.'));
+    campoOpcion(opciones, 'Escribe II–VI o 2–6 y presiona Enter.'));
 }
 
 function unidad(n) {
@@ -363,7 +364,10 @@ function capturaInicial(m) {
   return c;
 }
 
-const capturaDe = (id) => (capturas[id] ??= capturaInicial(METODOS[id]));
+function capturaDe(id) {
+  if (!capturas.has(id)) capturas.set(id, capturaInicial(METODOS[id]));
+  return capturas.get(id);
+}
 
 function interpretar(m, c) {
   const v = {};
@@ -397,12 +401,12 @@ function interpretar(m, c) {
 function calcular(id) {
   const m = METODOS[id];
   try {
-    resultados[id] = { ok: true, datos: m.ejecutar(interpretar(m, capturaDe(id))) };
+    resultados.set(id, { ok: true, datos: m.ejecutar(interpretar(m, capturaDe(id))) });
   } catch (e) {
     if (!(e instanceof ErrorMetodo)) console.error(e);
-    resultados[id] = { ok: false, mensaje: e instanceof ErrorMetodo ? e.message : `Error inesperado: ${e.message}` };
+    resultados.set(id, { ok: false, mensaje: e instanceof ErrorMetodo ? e.message : `Error inesperado: ${e.message}` });
   }
-  return resultados[id];
+  return resultados.get(id);
 }
 
 function ejemplo(id) {
@@ -447,7 +451,7 @@ function ejemplo(id) {
       mensaje,
       acciones(
         boton('Teoría', (b) => ir(`#/metodo/${id}`, b), 'secundario', 'atras'),
-        boton('Restaurar ejemplo', () => { capturas[id] = capturaInicial(m); render(); }),
+        boton('Restaurar ejemplo', () => { capturas.set(id, capturaInicial(m)); render(); }),
         h('button', { type: 'submit', class: 'boton primario' }, h('span', {}, 'Calcular'), icono('flecha')))));
 }
 
@@ -456,7 +460,7 @@ function ejemplo(id) {
 const COLUMNA_ITERADO = { biseccion: 3, falsaPosicion: 5, newton: 4, secante: 5 };
 
 function graficaRaices(id, datos) {
-  const c = capturas[id] ?? capturaInicial(METODOS[id]);
+  const c = capturas.get(id) ?? capturaInicial(METODOS[id]);
   let f;
   try { f = compilarFuncion(c.f); } catch { return null; }
   const puntos = datos.filas.map((fila) => fila[COLUMNA_ITERADO[id]]);
@@ -473,7 +477,7 @@ function graficaRaices(id, datos) {
 function tabla(id) {
   const m = METODOS[id];
   const u = unidadDe(id);
-  const r = resultados[id] ?? calcular(id);
+  const r = resultados.get(id) ?? calcular(id);
   const botones = acciones(
     boton('Menú principal', (b) => ir('#/menu', b), 'secundario', 'inicio'),
     boton('Métodos de la unidad', (b) => ir(`#/unidad/${u.numero}/metodos`, b), 'secundario', 'atras'),

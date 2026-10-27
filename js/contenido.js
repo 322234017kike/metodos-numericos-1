@@ -4,7 +4,6 @@ window.MN = window.MN || {};
 (() => {
 'use strict';
 
-const error = MN.error;
 const raices = MN.raices;
 const lineales = MN.lineales;
 const lu = MN.lu;
@@ -30,18 +29,6 @@ const b3 = [7, -21, 15];
 const SIMETRICA4 = [[4, 1, -2, 2], [1, 2, 0, 1], [-2, 0, 3, -2], [2, 1, -2, -1]];
 
 const UNIDADES = [
-  {
-    numero: 1,
-    romano: 'I',
-    titulo: 'Análisis de error',
-    objetivo: 'El alumno utilizará las técnicas para minimizar los errores típicos en el uso de los métodos numéricos.',
-    descripcion: [
-      'Todo resultado numérico es una aproximación. El error proviene de dos fuentes principales: el redondeo, porque la computadora guarda los números con una cantidad finita de dígitos, y el truncamiento, porque un proceso infinito (una serie o un límite) se corta en un número finito de pasos.',
-      'En esta unidad se miden los errores (absoluto y relativo), se estudia cómo representa los números la aritmética de punto flotante, cómo se propagan los errores en las operaciones y cómo comparar la rapidez de los métodos mediante el orden de convergencia.',
-    ],
-    temas: ['1.1 Introducción', '1.2 Errores de redondeo: punto flotante, truncamiento, absoluto y relativo', '1.3 Propagación del error', '1.4 Orden de convergencia'],
-    metodos: ['errores', 'epsilon', 'truncamiento', 'propagacion', 'cancelacion', 'orden'],
-  },
   {
     numero: 2,
     romano: 'II',
@@ -93,88 +80,6 @@ const UNIDADES = [
 ];
 
 const METODOS = {
-  // ---------------- Unidad I ----------------
-  errores: {
-    tema: '1.2', nombre: 'Error absoluto y relativo',
-    teoria: {
-      idea: 'Si p es el valor real y p* su aproximación, el error absoluto mide cuánto se separan y el relativo lo compara con el tamaño de p. El error relativo es el que indica cuántas cifras significativas son correctas.',
-      formulas: ['Ea = |p − p*|', 'Er = |p − p*| / |p|,   p ≠ 0', 'Er% = Er · 100', 'p* tiene t cifras significativas si t es el mayor entero con Er ≤ 5 × 10⁻ᵗ'],
-      algoritmo: ['Captura el valor real p y la aproximación p*.', 'Calcula Ea y Er.', 'Busca el mayor t que cumple Er ≤ 5 × 10⁻ᵗ.'],
-      notas: ['Un error absoluto de 1 es enorme si p = 2, pero despreciable si p = 10⁶; por eso se prefiere el relativo.', 'En la práctica p se desconoce; se usa el error aproximado entre dos iteraciones consecutivas.'],
-    },
-    parametros: [
-      { clave: 'real', etiqueta: 'Valor real p', tipo: 'numero', valor: 'pi' },
-      { clave: 'aprox', etiqueta: 'Aproximación p*', tipo: 'numero', valor: '3.1416' },
-    ],
-    ejecutar: (v) => error.erroresAbsRel(v),
-  },
-  epsilon: {
-    tema: '1.2', nombre: 'Punto flotante y épsilon de máquina',
-    teoria: {
-      idea: 'Un número de punto flotante se guarda como ±m × βᵉ, con una mantisa m de t dígitos y un exponente e acotado. Como t es finito, entre dos números representables hay huecos: el épsilon de máquina es la distancia de 1 al siguiente número representable.',
-      formulas: ['x = ±(0.d₁d₂…dₜ)β × βᵉ', 'ε = β¹⁻ᵗ (con redondeo, la unidad de redondeo es ε/2)', 'IEEE 754 doble: β = 2, t = 53, ε = 2⁻⁵² ≈ 2.22 × 10⁻¹⁶', '|fl(x) − x| / |x| ≤ ε/2'],
-      algoritmo: ['Inicia con ε = 1.', 'Mientras 1 + ε > 1, guarda ε y divide entre la base.', 'El último ε que cumplió la condición es el épsilon de máquina.'],
-      notas: ['Por eso 0.1 + 0.2 ≠ 0.3 en la computadora: 0.1 no tiene representación exacta en base 2.', 'Truncar (cortar) en lugar de redondear duplica la cota del error.'],
-    },
-    parametros: [{ clave: 'base', etiqueta: 'Base de división', tipo: 'entero', valor: '2' }],
-    ejecutar: (v) => error.epsilonMaquina(v),
-  },
-  truncamiento: {
-    tema: '1.2', nombre: 'Error de truncamiento (serie de Taylor)',
-    teoria: {
-      idea: 'El error de truncamiento aparece al reemplazar un proceso infinito por uno finito. El ejemplo clásico es cortar la serie de Taylor: eˣ = 1 + x + x²/2! + x³/3! + … se aproxima con sus primeros n términos.',
-      formulas: ['f(x) = Σₖ₌₀ⁿ f⁽ᵏ⁾(a)(x − a)ᵏ / k! + Rₙ(x)', 'Rₙ(x) = f⁽ⁿ⁺¹⁾(ξ)(x − a)ⁿ⁺¹ / (n + 1)!', 'Et% = |real − aprox| / |real| · 100', 'Ea% = |actual − anterior| / |actual| · 100'],
-      algoritmo: ['Suma término a término xⁿ/n!.', 'En cada paso calcula el error verdadero y el error aproximado.', 'Observa cómo ambos errores disminuyen al agregar términos.'],
-      notas: ['Para x negativos grandes la serie alterna y se pierde precisión por cancelación: conviene calcular 1/e^|x|.'],
-    },
-    parametros: [
-      { clave: 'x', etiqueta: 'x', tipo: 'numero', valor: '1' },
-      { clave: 'terminos', etiqueta: 'Número de términos', tipo: 'entero', valor: '12' },
-    ],
-    ejecutar: (v) => error.truncamientoTaylor(v),
-  },
-  propagacion: {
-    tema: '1.3', nombre: 'Propagación del error',
-    teoria: {
-      idea: 'Si x y y traen errores Δx y Δy, el resultado de operar con ellos también tiene error. En sumas y restas se acumulan los errores absolutos; en productos y cocientes se acumulan los relativos.',
-      formulas: ['Δ(x ± y) ≈ Δx + Δy', 'δ(x · y) ≈ δx + δy', 'δ(x / y) ≈ δx + δy', 'En general: Δf ≈ |∂f/∂x|·Δx + |∂f/∂y|·Δy', 'δ = Δ / |valor|'],
-      algoritmo: ['Captura x, y y sus cotas de error absoluto.', 'Calcula el resultado de cada operación y su cota de error.', 'Compara los errores relativos: si la resta los dispara, hay cancelación.'],
-      notas: ['Restar números casi iguales conserva el error absoluto pero el resultado es pequeño, así que el error relativo crece mucho.'],
-    },
-    parametros: [
-      { clave: 'x', etiqueta: 'x', tipo: 'numero', valor: '2.718' },
-      { clave: 'ex', etiqueta: 'Error absoluto de x (Δx)', tipo: 'numero', valor: '0.0005' },
-      { clave: 'y', etiqueta: 'y', tipo: 'numero', valor: '2.716' },
-      { clave: 'ey', etiqueta: 'Error absoluto de y (Δy)', tipo: 'numero', valor: '0.0005' },
-    ],
-    ejecutar: (v) => error.propagacion(v),
-  },
-  cancelacion: {
-    tema: '1.3', nombre: 'Cancelación catastrófica',
-    teoria: {
-      idea: 'Al restar dos números muy parecidos se cancelan las cifras iguales y solo quedan las que traían error. La solución es reescribir la expresión para evitar la resta.',
-      formulas: ['√(x+1) − √x = 1 / (√(x+1) + √x)', 'Fórmula cuadrática estable: x₁ = (−b − signo(b)√(b²−4ac)) / 2a,  x₂ = c / (a·x₁)'],
-      algoritmo: ['Evalúa la expresión directa y la reformulada para x = 10, 100, 1000, …', 'Compara ambas: la reformulada es la referencia confiable.'],
-      notas: ['Con x = 10¹⁶ la forma directa da 0 porque x + 1 y x son el mismo número en punto flotante.'],
-    },
-    parametros: [{ clave: 'potenciaMax', etiqueta: 'Potencia máxima de 10', tipo: 'entero', valor: '16' }],
-    ejecutar: (v) => error.cancelacion(v),
-  },
-  orden: {
-    tema: '1.4', nombre: 'Orden de convergencia',
-    teoria: {
-      idea: 'Una sucesión xₖ → L converge con orden p si los errores cumplen eₖ₊₁ ≈ λ·eₖᵖ. Con p = 1 (lineal) se gana una cantidad fija de dígitos por iteración; con p = 2 (cuadrática) los dígitos correctos se duplican.',
-      formulas: ['lim eₖ₊₁ / eₖᵖ = λ,  eₖ = |xₖ − L|', 'p ≈ ln(eₖ₊₁/eₖ) / ln(eₖ/eₖ₋₁)', 'Bisección: p = 1, λ = 1/2', 'Secante: p ≈ 1.618', 'Newton (raíz simple): p = 2'],
-      algoritmo: ['Captura las aproximaciones de un método y, si lo conoces, el límite.', 'Calcula los errores eₖ.', 'Estima p con tres errores consecutivos.'],
-      notas: ['El ejemplo precargado son las iteraciones de Newton para x² − 2 = 0, partiendo de x₀ = 1.'],
-    },
-    parametros: [
-      { clave: 'sucesion', etiqueta: 'Aproximaciones x₀, x₁, … (separadas por comas)', tipo: 'lista', valor: '1, 1.5, 1.4166666666666667, 1.4142156862745099, 1.4142135623746899' },
-      { clave: 'limite', etiqueta: 'Límite L (opcional)', tipo: 'numero', valor: 'sqrt(2)', opcional: true },
-    ],
-    ejecutar: (v) => error.ordenConvergencia(v),
-  },
-
   // ---------------- Unidad II ----------------
   biseccion: {
     tema: '2.1', nombre: 'Método de bisección',
