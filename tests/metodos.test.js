@@ -128,6 +128,28 @@ prueba('Iteración QR', () => {
   vectorCerca(ls, [11, 2, 1], 1e-8);
 });
 
+prueba('Polinomio característico', () => {
+  vectorCerca(propios.polinomioCaracteristico(P), [-1, 14, -35, 22], 0); // −(λ−1)(λ−2)(λ−11)
+  vectorCerca(propios.polinomioCaracteristico([[1, 2], [3, 4]]), [1, -5, -2], 0);
+});
+prueba('Raíces del polinomio (reales y complejas)', () => {
+  const r = propios.raicesPolinomio(propios.polinomioCaracteristico([[-26, -33, -25], [31, 42, 23], [-11, -15, -4]]));
+  vectorCerca(r.map((z) => z.re), [15, -6, 3], 1e-9); // ordenadas por |λ|
+  if (r.some((z) => z.im !== 0)) throw new Error('No debería haber raíces complejas');
+  const c = propios.raicesPolinomio(propios.polinomioCaracteristico([[0, -1], [1, 0]]));
+  c.forEach((z) => { cerca(z.re, 0, 1e-9); cerca(Math.abs(z.im), 1, 1e-9); });
+});
+prueba('Potencia y potencia inversa coinciden con el polinomio', () => {
+  const M = [[-26, -33, -25], [31, 42, 23], [-11, -15, -4]];
+  const d = propios.potencias({ A: M, x0: [1, 1, 1], tol: 1e-12, maxIter: 1000 }).potencia;
+  cerca(d.lambda, 15, 1e-8, 'máximo:');
+  if (!d.comprobacion.coincide) throw new Error('La comprobación del máximo no coincide');
+  const i = propios.potencias({ A: M, x0: [1, 1, 1], tol: 1e-12, maxIter: 1000, variante: 'inversa', q: 0 }).potencia;
+  cerca(i.lambda, 3, 1e-8, 'mínimo:');
+  if (!i.comprobacion.coincide) throw new Error('La comprobación del mínimo no coincide');
+  if (i.pasos.length !== i.pasos.at(-1).k) throw new Error('Faltan pasos registrados');
+});
+
 // ---- Intérprete de expresiones ----
 const ex = MN.expresiones;
 

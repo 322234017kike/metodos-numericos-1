@@ -10,42 +10,48 @@ const { falla, copiar, identidad, multiplicar, multiplicarVector, transpuesta, v
 const mayorComponente = (v) => v.reduce((m, x) => (Math.abs(x) > Math.abs(m) ? x : m), 0);
 
 /**
- * 5.1 Método de potencias. Variante 'directa': valor propio dominante.
- * Variante 'inversa': valor propio más cercano al desplazamiento q, resolviendo (A − qI)·y = x.
+ * 5.1 Método de potencias. Variante 'directa': valor propio dominante (máximo |λ|).
+ * Variante 'inversa': valor propio más cercano al desplazamiento q (con q = 0, el mínimo |λ|),
+ * resolviendo (A − qI)·y = x en cada paso.
  */
 function potencias({ A, x0, tol, maxIter, variante = 'directa', q = 0 }) {
   validarCuadrada(A);
   const n = A.length;
   if (!Array.isArray(x0) || x0.length !== n) falla('El vector inicial debe tener n entradas.');
   if (normaInf(x0) === 0) falla('El vector inicial no puede ser el vector cero.');
-  const B = variante === 'inversa' ? A.map((fila, i) => fila.map((a, j) => (i === j ? a - q : a))) : A;
+  const inversa = variante === 'inversa';
+  const B = inversa ? A.map((fila, i) => fila.map((a, j) => (i === j ? a - q : a))) : A;
 
-  const columnas = ['k', ...A.map((_, i) => `x${i + 1}`), 'λ', 'Error |Δλ|'];
+  const columnas = ['k', ...A.map((_, i) => `x${i + 1}`), 'λ', 'Error |Δλ|', 'Cambio ‖Δx‖∞'];
+  // λ converge más rápido que el vector, así que también se exige que el vector se estabilice.
+  const tolVector = Math.sqrt(tol) / 10;
   let x = x0.map((v) => v / mayorComponente(x0));
-  const filas = [[0, ...x, NaN, NaN]];
+  const filas = [[0, ...x, NaN, NaN, NaN]];
+  const pasos = []; // { k, x (anterior), y, mu, lambda, err } para mostrar el desarrollo
   let lambda = NaN;
+  let convergio = false;
   for (let k = 1; k <= maxIter; k++) {
     let y;
-    if (variante === 'inversa') {
-      try { y = resolver(B, x); } catch { falla(`A − qI es singular: q = ${q} ya es un valor propio exacto.`); }
+    if (inversa) {
+      try { y = resolver(B, x); } catch { falla(q === 0 ? 'A es singular: λ = 0 es un valor propio, así que no tiene inversa.' : `A − qI es singular: q = ${q} ya es un valor propio exacto.`); }
     } else y = multiplicarVector(B, x);
     const mu = mayorComponente(y);
     if (mu === 0) falla('A·x dio el vector cero: elige otro vector inicial.');
-    const nuevo = variante === 'inversa' ? q + 1 / mu : mu;
+    const nuevo = inversa ? q + 1 / mu : mu;
+    const anterior = x;
     x = y.map((v) => v / mu);
     const err = Math.abs(nuevo - lambda);
+    const cambio = normaInf(x.map((v, i) => v - anterior[i]));
     lambda = nuevo;
-    filas.push([k, ...x, lambda, k === 1 ? NaN : err]);
-    if (k > 1 && err < tol * Math.max(1, Math.abs(lambda))) {
-      return resumenPotencias(lambda, x, A, true, columnas, filas);
-    }
+    filas.push([k, ...x, lambda, k === 1 ? NaN : err, cambio]);
+    pasos.push({ k, x: anterior, y, mu, lambda, err: k === 1 ? NaN : err });
+    if (k > 1 && err < tol * Math.max(1, Math.abs(lambda)) && cambio < tolVector) { convergio = true; break; }
   }
-  return resumenPotencias(lambda, x, A, false, columnas, filas);
-}
 
-function resumenPotencias(lambda, x, A, convergio, columnas, filas) {
-  const Ax = multiplicarVector(A, x);
-  const residuo = normaInf(Ax.map((v, i) => v - lambda * x[i]));
+  const residuo = normaInf(multiplicarVector(A, x).map((v, i) => v - lambda * x[i]));
+  const comprobacion = comprobarConPolinomio(A, lambda, inversa && q === 0 ? 'menor' : inversa ? 'cercano' : 'mayor', q);
+  const avisos = convergio ? [] : ['Se alcanzó el máximo de iteraciones. Si dos valores propios tienen el mismo módulo, el método no converge.'];
+  if (!comprobacion.coincide) avisos.push('El valor obtenido no coincide con el del polinomio característico: revisa la convergencia o el vector inicial.');
   return {
     convergio,
     resultado: [
@@ -55,8 +61,80 @@ function resumenPotencias(lambda, x, A, convergio, columnas, filas) {
     ],
     columnas,
     filas,
-    avisos: convergio ? [] : ['Se alcanzó el máximo de iteraciones. Si dos valores propios tienen el mismo módulo, el método no converge.'],
+    avisos,
+    potencia: { variante, q, tol, A, lambda, vector: x, x0, pasos, residuo, comprobacion },
   };
+}
+
+// ---------------- Comprobación con el polinomio característico ----------------
+
+/**
+ * Coeficientes de det(A − λI), del grado mayor al término independiente,
+ * con el algoritmo de Faddeev–LeVerrier (exacto para matrices de enteros pequeñas).
+ */
+function polinomioCaracteristico(A) {
+  const n = A.length;
+  const c = new Array(n + 1).fill(0); // c[i] multiplica a λ^i en det(λI − A)
+  c[n] = 1;
+  let M = identidad(n).map((f) => f.fill(0));
+  for (let k = 1; k <= n; k++) {
+    const AM = multiplicar(A, M);
+    M = AM.map((fila, i) => fila.map((v, j) => (i === j ? v + c[n - k + 1] : v)));
+    const AMk = multiplicar(A, M);
+    c[n - k] = -AMk.reduce((s, f, i) => s + f[i], 0) / k;
+  }
+  // det(A − λI) = (−1)^n · det(λI − A); se limpian los casi enteros.
+  const signo = n % 2 === 0 ? 1 : -1;
+  return c.slice().reverse().map((v) => {
+    const s = signo * v;
+    const r = Math.round(s);
+    return Math.abs(s - r) < 1e-9 * Math.max(1, Math.abs(s)) ? r : s;
+  });
+}
+
+// Aritmética compleja mínima para hallar las raíces.
+const cMul = (a, b) => ({ re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re });
+const cSub = (a, b) => ({ re: a.re - b.re, im: a.im - b.im });
+const cDiv = (a, b) => { const d = b.re * b.re + b.im * b.im; return { re: (a.re * b.re + a.im * b.im) / d, im: (a.im * b.re - a.re * b.im) / d }; };
+
+/** Raíces de un polinomio (coeficientes del grado mayor al menor) con el método de Durand–Kerner. */
+function raicesPolinomio(coef) {
+  const n = coef.length - 1;
+  const monico = coef.map((v) => v / coef[0]);
+  const evaluar = (z) => monico.reduce((acc, a) => ({ re: acc.re * z.re - acc.im * z.im + a, im: acc.re * z.im + acc.im * z.re }), { re: 0, im: 0 });
+  let z = Array.from({ length: n }, (_, k) => {
+    let p = { re: 1, im: 0 };
+    for (let i = 0; i < k; i++) p = cMul(p, { re: 0.4, im: 0.9 });
+    return p;
+  });
+  for (let it = 0; it < 1000; it++) {
+    let cambio = 0;
+    z = z.map((zi, i) => {
+      let den = { re: 1, im: 0 };
+      z.forEach((zj, j) => { if (j !== i) den = cMul(den, cSub(zi, zj)); });
+      const nuevo = cSub(zi, cDiv(evaluar(zi), den));
+      cambio = Math.max(cambio, Math.hypot(nuevo.re - zi.re, nuevo.im - zi.im));
+      return nuevo;
+    });
+    if (cambio < 1e-14) break;
+  }
+  const limpio = (v) => { const r = Math.round(v); return Math.abs(v - r) < 1e-8 ? r : v; };
+  return z
+    .map(({ re, im }) => ({ re: limpio(re), im: Math.abs(im) < 1e-8 ? 0 : im }))
+    .sort((a, b) => Math.hypot(b.re, b.im) - Math.hypot(a.re, a.im) || b.re - a.re);
+}
+
+/** Compara el λ del método de potencias con el que predice el polinomio característico. */
+function comprobarConPolinomio(A, lambda, criterio, q = 0) {
+  const coef = polinomioCaracteristico(A);
+  const raices = raicesPolinomio(coef);
+  const distancia = (z, c) => Math.hypot(z.re - c, z.im);
+  let esperado;
+  if (criterio === 'mayor') esperado = raices[0];
+  else if (criterio === 'menor') esperado = raices[raices.length - 1];
+  else esperado = raices.reduce((m, z) => (distancia(z, q) < distancia(m, q) ? z : m));
+  const coincide = Math.abs(esperado.im) < 1e-8 && Math.abs(esperado.re - lambda) <= 1e-5 * Math.max(1, Math.abs(lambda));
+  return { coef, raices, esperado, coincide, criterio };
 }
 
 /**
@@ -156,5 +234,5 @@ function iteracionQR({ A, tol, maxIter }) {
   };
 }
 
-MN.propios = { potencias, householder, factorizarQR, iteracionQR };
+MN.propios = { potencias, polinomioCaracteristico, raicesPolinomio, householder, factorizarQR, iteracionQR };
 })();

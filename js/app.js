@@ -9,7 +9,7 @@ const { CONFIG } = MN.config;
 const { INTRO, UNIDADES, METODOS } = MN.contenido;
 const { compilarFuncion, evaluarNumero, evaluarLista } = MN.expresiones;
 const { ErrorMetodo, falla } = MN.util;
-const { h, icono, vistaValor, vistaTabla, vistaMatriz, editorMatriz, editorVector, editorSimple, redimensionarMatriz, redimensionarVector, grafica } = MN.ui;
+const { h, icono, formatoNumero, vistaValor, vistaTabla, vistaMatriz, editorMatriz, editorVector, editorSimple, redimensionarMatriz, redimensionarVector, grafica } = MN.ui;
 
 const app = document.getElementById('app');
 const LETRAS = 'abcdefghijklmnopqrstuvwxyz';
@@ -452,7 +452,7 @@ function ejemplo(id) {
       acciones(
         boton('Teoría', (b) => ir(`#/metodo/${id}`, b), 'secundario', 'atras'),
         boton('Restaurar ejemplo', () => { capturas.set(id, capturaInicial(m)); render(); }),
-        h('button', { type: 'submit', class: 'boton primario' }, h('span', {}, 'Calcular'), icono('flecha')))));
+        h('button', { type: 'submit', class: 'boton primario' }, h('span', {}, m.presentacion === 'propios' ? 'Encontrar' : 'Calcular'), icono('flecha')))));
 }
 
 // ---------------- Tabla de resultados ----------------
@@ -474,6 +474,122 @@ function graficaRaices(id, datos) {
   return svg ? h('figure', { class: 'figura bloque' }, svg, h('figcaption', {}, 'Curva de f(x); los puntos sobre el eje son las aproximaciones y el círculo verde la raíz final.')) : null;
 }
 
+// ---------------- Presentación de valores propios (al estilo de una calculadora de matrices) ----------------
+
+const SUPERINDICES = { 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
+const superindice = (k) => String(k).split('').map((c) => SUPERINDICES[c]).join('');
+
+/** Redondea a `d` decimales y quita el −0. */
+const redondear = (x, d) => { const r = Number(x.toFixed(d)); return Object.is(r, -0) ? 0 : r; };
+
+const columna = (v, d) => vistaMatriz(v.map((x) => [d === undefined ? x : redondear(x, d)]), undefined, 'parentesis');
+
+/** det(A − λI) como texto: −λ³ + 14λ² − 35λ + 22. */
+function textoPolinomio(coef) {
+  const n = coef.length - 1;
+  let texto = '';
+  coef.forEach((c, i) => {
+    const g = n - i;
+    if (c === 0) return;
+    const abs = Math.abs(c);
+    const valor = formatoNumero(abs);
+    const cuerpo = g === 0 ? valor : `${abs === 1 ? '' : valor}λ${g > 1 ? superindice(g) : ''}`;
+    texto += texto === '' ? `${c < 0 ? '−' : ''}${cuerpo}` : ` ${c < 0 ? '−' : '+'} ${cuerpo}`;
+  });
+  return texto || '0';
+}
+
+/** Factorización con las raíces reales: −(λ − 1)(λ − 2)(λ − 11). Null si hay raíces complejas. */
+function textoFactorizado(coef, raices) {
+  if (raices.some((z) => z.im !== 0)) return null;
+  const lider = coef[0];
+  const factores = raices.slice().sort((a, b) => a.re - b.re)
+    .map(({ re }) => (re === 0 ? 'λ' : `(λ ${re < 0 ? '+' : '−'} ${formatoNumero(Math.abs(re))})`)).join('');
+  return `${lider === -1 ? '−' : lider === 1 ? '' : formatoNumero(lider)}${factores}`;
+}
+
+const textoRaiz = (z) => (z.im === 0 ? formatoNumero(z.re) : `${formatoNumero(z.re)} ${z.im < 0 ? '−' : '+'} ${formatoNumero(Math.abs(z.im))}i`);
+
+/** Matriz A − λI con las entradas de la diagonal escritas como "a − λ". */
+function matrizMenosLambda(A) {
+  return A.map((fila, i) => fila.map((a, j) => {
+    if (i !== j) return a;
+    return a === 0 ? '−λ' : `${formatoNumero(a)} − λ`;
+  }));
+}
+
+const PASOS_COMPLETOS = 5; // cuántas iteraciones se muestran desarrolladas antes de abreviar
+
+function pasoPotencia(p, inversa, d) {
+  const sup = superindice(p.k), supAnt = superindice(p.k - 1);
+  const ecuacion = inversa
+    ? h('div', { class: 'ecuacion' }, h('span', {}, `Se resuelve A · y${sup} = x${supAnt}:  y${sup} =`), columna(p.y, d))
+    : h('div', { class: 'ecuacion' }, h('span', {}, `y${sup} = A · x${supAnt} = A ·`), columna(p.x, d), h('span', {}, '='), columna(p.y, d));
+  const escala = inversa
+    ? `μ${sup} = ${formatoNumero(redondear(p.mu, d))} (componente de mayor valor absoluto)  →  λ${sup} = 1 / μ${sup} = ${formatoNumero(redondear(p.lambda, d))}`
+    : `λ${sup} = ${formatoNumero(redondear(p.lambda, d))} (componente de mayor valor absoluto)`;
+  const divisor = inversa ? `μ${sup}` : `λ${sup}`;
+  const siguiente = p.y.map((v) => v / p.mu);
+  return h('li', {},
+    h('strong', {}, `Iteración ${p.k}`),
+    ecuacion,
+    h('p', {}, escala),
+    h('div', { class: 'ecuacion' }, h('span', {}, `x${sup} = y${sup} / ${divisor} =`), columna(siguiente, d)),
+    Number.isFinite(p.err) ? h('p', { class: 'nota' }, `Error |λ${sup} − λ${supAnt}| = ${formatoNumero(p.err)}`) : null);
+}
+
+function vistaPropios(d) {
+  const P = d.potencia;
+  const inversa = P.variante === 'inversa';
+  const decimales = Math.min(8, Math.max(3, Math.ceil(-Math.log10(P.tol) / 2)));
+  const tipo = inversa ? 'mínimo' : 'máximo';
+  const { comprobacion: C } = P;
+
+  // Las primeras iteraciones desarrolladas; si son muchas, se abrevia y se muestra la última.
+  const pasos = P.pasos;
+  const visibles = pasos.length <= PASOS_COMPLETOS + 1 ? pasos : [...pasos.slice(0, PASOS_COMPLETOS), null, pasos[pasos.length - 1]];
+
+  const verificado = C.coincide
+    ? h('p', { class: 'verificado' }, icono('check'), h('span', {}, `El valor propio ${tipo} según el polinomio es λ = ${textoRaiz(C.esperado)}, que coincide con el método de ${inversa ? 'potencia inversa' : 'potencias'}.`))
+    : h('p', { class: 'mensaje-error' }, icono('alerta'), h('span', {}, `El polinomio indica λ = ${textoRaiz(C.esperado)} como valor ${tipo}; no coincide con el obtenido.`));
+  const factorizado = textoFactorizado(C.coef, C.raices);
+
+  return h('div', { class: 'calc-propios' },
+    h('div', { class: 'ecuacion grande' }, h('span', { class: 'mat-nombre' }, 'A ='), vistaMatriz(P.A, undefined, 'parentesis')),
+    h('h2', {}, `Valor propio ${tipo} y su vector propio`),
+    h('ul', { class: 'lista-propios' },
+      h('li', {},
+        h('div', { class: 'ecuacion grande' },
+          h('span', { class: 'mat-nombre' }, 'v ='), columna(P.vector, decimales),
+          h('span', {}, ', valor propio ', tipo, ' '), h('strong', { class: 'lambda' }, `λ = ${formatoNumero(redondear(P.lambda, decimales))}`)))),
+    h('p', { class: 'nota' }, `Valores redondeados a ${decimales} decimales. Comprobación directa: ‖A·v − λ·v‖∞ = ${formatoNumero(P.residuo)}.`),
+    h('details', { class: 'detalles' },
+      h('summary', {}, 'Los detalles'),
+      h('ol', { class: 'pasos-propios' },
+        h('li', {},
+          h('strong', {}, `Método de ${inversa ? 'potencia inversa' : 'potencias'}`),
+          h('p', {}, inversa
+            ? 'Los valores propios de A⁻¹ son 1/λ, así que el valor dominante de A⁻¹ da el valor propio mínimo de A. En vez de invertir A, en cada iteración se resuelve A·y = x.'
+            : 'En cada iteración se multiplica A por el vector actual y se divide entre su componente de mayor valor absoluto; ese factor converge al valor propio máximo.'),
+          h('div', { class: 'ecuacion' }, h('span', {}, 'Vector inicial x⁰ ='), columna(P.x0)),
+          h('ol', { class: 'iteraciones-propios' }, visibles.map((p) => (p
+            ? pasoPotencia(p, inversa, decimales)
+            : h('li', { class: 'omitidas' }, `… iteraciones ${PASOS_COMPLETOS + 1} a ${pasos.length - 1}: ver la tabla …`)))),
+          h('p', {}, `Después de ${pasos.length} iteraciones: λ = ${formatoNumero(P.lambda)}.`)),
+        h('li', {},
+          h('strong', {}, 'Tabla de iteraciones'),
+          vistaTabla(d.columnas, d.filas)),
+        h('li', {},
+          h('strong', {}, 'Comprobación con el polinomio característico'),
+          h('p', {}, 'Si λ es un valor propio de A, existe un vector v ≠ 0 tal que A·v = λ·v, es decir (A − λI)·v = 0. Como v no es nulo, el determinante de A − λI debe ser 0:'),
+          h('div', { class: 'ecuacion' },
+            h('span', {}, 'det(A − λI) ='), vistaMatriz(matrizMenosLambda(P.A), undefined, 'determinante'),
+            h('span', {}, `= ${textoPolinomio(C.coef)}${factorizado ? ` = ${factorizado}` : ''} = 0`)),
+          h('p', {}, 'Raíces (todos los valores propios de A):'),
+          h('ol', { class: 'raices' }, C.raices.map((z, i) => h('li', {}, `λ${i + 1} = ${textoRaiz(z)}`, h('span', { class: 'nota' }, `   |λ| = ${formatoNumero(Math.hypot(z.re, z.im))}`)))),
+          verificado))));
+}
+
 function tabla(id) {
   const m = METODOS[id];
   const u = unidadDe(id);
@@ -488,6 +604,14 @@ function tabla(id) {
       h('div', { class: 'mensaje-error', role: 'alert' }, icono('alerta'), h('span', {}, r.mensaje)), botones);
   }
   const d = r.datos;
+  if (m.presentacion === 'propios' && d.potencia) {
+    return hoja({ clase: 'ancha', unidad: u.numero },
+      cabeceraMetodo(id, 'tabla'),
+      h('div', { class: `estado ${d.convergio ? 'ok' : 'aviso'}` }, icono(d.convergio ? 'check' : 'alerta'), d.convergio ? 'Cálculo completado' : 'Cálculo sin convergencia'),
+      d.avisos?.length ? h('ul', { class: 'avisos' }, d.avisos.map((a) => h('li', {}, a))) : null,
+      vistaPropios(d),
+      botones);
+  }
   return hoja({ clase: 'ancha', unidad: u.numero },
     cabeceraMetodo(id, 'tabla'),
     h('div', { class: `estado ${d.convergio ? 'ok' : 'aviso'}` }, icono(d.convergio ? 'check' : 'alerta'), d.convergio ? 'Cálculo completado' : 'Cálculo sin convergencia'),

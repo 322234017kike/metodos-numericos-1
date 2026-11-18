@@ -72,10 +72,10 @@ const UNIDADES = [
     objetivo: 'El alumno aplicará técnicas numéricas para el cálculo de valores propios.',
     descripcion: [
       'λ es un valor propio de A con vector propio v ≠ 0 si Av = λv. Calcularlos con el polinomio característico det(A − λI) = 0 es inestable y costoso, por lo que se usan métodos iterativos.',
-      'El método de potencias obtiene el valor propio dominante (o, en su versión inversa, el más cercano a un valor dado). Para obtener todos, primero se reduce la matriz con transformaciones de Householder y después se aplica la iteración QR.',
+      'El método de potencias obtiene el valor propio máximo (el de mayor valor absoluto) y el de potencia inversa, el mínimo. Cada resultado se comprueba con el polinomio característico. Para obtener todos, primero se reduce la matriz con transformaciones de Householder y después se aplica la iteración QR.',
     ],
-    temas: ['5.1 Método de potencias', '5.2 Transformación de Householder', '5.3 Iteración QR'],
-    metodos: ['potencias', 'householder', 'qr'],
+    temas: ['5.1 Método de potencias y potencia inversa', '5.2 Transformación de Householder', '5.3 Iteración QR'],
+    metodos: ['potencias', 'potenciaInversa', 'householder', 'qr'],
   },
 ];
 
@@ -318,20 +318,35 @@ const METODOS = {
   // ---------------- Unidad V ----------------
   potencias: {
     tema: '5.1', nombre: 'Método de potencias',
+    presentacion: 'propios',
     teoria: {
-      idea: 'Al multiplicar repetidamente un vector por A, la componente en la dirección del vector propio dominante crece más rápido que las demás. Normalizando en cada paso, el vector converge a ese vector propio y el factor de escala al valor propio dominante.',
-      formulas: ['y⁽ᵏ⁾ = Ax⁽ᵏ⁾', 'λ⁽ᵏ⁾ = componente de mayor valor absoluto de y⁽ᵏ⁾', 'x⁽ᵏ⁺¹⁾ = y⁽ᵏ⁾ / λ⁽ᵏ⁾', 'Rapidez: |λ₂ / λ₁|ᵏ', 'Inversa con desplazamiento q: (A − qI)y = x,  λ = q + 1/μ'],
-      algoritmo: ['Elige x⁽⁰⁾ ≠ 0.', 'Calcula y = Ax (o resuelve (A − qI)y = x en la variante inversa).', 'Normaliza dividiendo entre la componente mayor.', 'Repite hasta que λ cambie menos que la tolerancia.'],
-      notas: ['La variante inversa encuentra el valor propio más cercano a q.', 'Si dos valores propios tienen el mismo módulo, el método no converge.'],
+      idea: 'Al multiplicar repetidamente un vector por A, la componente en la dirección del vector propio dominante crece más rápido que las demás. Normalizando en cada paso, el vector converge a ese vector propio y el factor de escala al valor propio máximo (el de mayor valor absoluto).',
+      formulas: ['y⁽ᵏ⁾ = A·x⁽ᵏ⁻¹⁾', 'λ⁽ᵏ⁾ = componente de mayor valor absoluto de y⁽ᵏ⁾', 'x⁽ᵏ⁾ = y⁽ᵏ⁾ / λ⁽ᵏ⁾', 'Rapidez: |λ₂ / λ₁|ᵏ'],
+      algoritmo: ['Elige x⁽⁰⁾ ≠ 0.', 'Calcula y = A·x.', 'Toma λ como la componente de mayor valor absoluto de y y divide y entre λ.', 'Repite hasta que λ cambie menos que la tolerancia.', 'Comprueba el resultado con el polinomio característico det(A − λI) = 0.'],
+      notas: ['Si dos valores propios tienen el mismo valor absoluto (por ejemplo 3 y −3), el método no converge.'],
     },
     parametros: [
       matriz([[2, 0, 0], [0, 3, 4], [0, 4, 9]]),
       vector('x0', 'Vector inicial x⁽⁰⁾', [1, 1, 1]),
-      { clave: 'variante', etiqueta: 'Variante', tipo: 'opciones', valor: 'directa', opciones: [['directa', 'Directa (valor dominante)'], ['inversa', 'Inversa con desplazamiento q']] },
-      { clave: 'q', etiqueta: 'Desplazamiento q (variante inversa)', tipo: 'numero', valor: '0' },
       tolerancia('1e-8'), maxIter('200'),
     ],
-    ejecutar: (v) => propios.potencias(v),
+    ejecutar: (v) => propios.potencias({ ...v, variante: 'directa' }),
+  },
+  potenciaInversa: {
+    tema: '5.1', nombre: 'Método de potencia inversa',
+    presentacion: 'propios',
+    teoria: {
+      idea: 'Los valores propios de A⁻¹ son 1/λ. Aplicar el método de potencias a A⁻¹ encuentra su valor dominante 1/λ, que corresponde al valor propio mínimo de A (el de menor valor absoluto). En lugar de invertir A, en cada paso se resuelve el sistema A·y = x.',
+      formulas: ['A·y⁽ᵏ⁾ = x⁽ᵏ⁻¹⁾  (se resuelve con Gauss)', 'μ⁽ᵏ⁾ = componente de mayor valor absoluto de y⁽ᵏ⁾', 'x⁽ᵏ⁾ = y⁽ᵏ⁾ / μ⁽ᵏ⁾', 'λ⁽ᵏ⁾ = 1 / μ⁽ᵏ⁾'],
+      algoritmo: ['Elige x⁽⁰⁾ ≠ 0.', 'Resuelve A·y = x.', 'Toma μ como la componente de mayor valor absoluto de y, divide y entre μ y calcula λ = 1/μ.', 'Repite hasta que λ cambie menos que la tolerancia.', 'Comprueba el resultado con el polinomio característico det(A − λI) = 0.'],
+      notas: ['Requiere que A sea invertible (que 0 no sea valor propio).'],
+    },
+    parametros: [
+      matriz([[2, 0, 0], [0, 3, 4], [0, 4, 9]]),
+      vector('x0', 'Vector inicial x⁽⁰⁾', [1, 1, 1]),
+      tolerancia('1e-8'), maxIter('200'),
+    ],
+    ejecutar: (v) => propios.potencias({ ...v, variante: 'inversa', q: 0 }),
   },
   householder: {
     tema: '5.2', nombre: 'Transformación de Householder',

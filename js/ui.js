@@ -39,11 +39,14 @@ function formatoComplejo({ re, im }) {
   return `${formatoNumero(re)} ${im < 0 ? '−' : '+'} ${formatoNumero(Math.abs(im))}i`;
 }
 
-/** Tabla de una matriz (con separador vertical opcional para matrices aumentadas). */
-function vistaMatriz(datos, separador) {
-  return h('table', { class: 'matriz' },
+/**
+ * Tabla de una matriz (con separador vertical opcional para matrices aumentadas).
+ * `estilo`: 'corchetes' (por omisión), 'parentesis' o 'determinante' (barras verticales).
+ */
+function vistaMatriz(datos, separador, estilo = 'corchetes') {
+  return h('table', { class: `matriz ${estilo}` },
     h('tbody', {}, datos.map((fila) => h('tr', {}, fila.map((x, j) =>
-      h('td', { class: separador && j === separador ? 'separador' : null }, formatoNumero(Math.abs(x) < 1e-13 ? 0 : x)))))));
+      h('td', { class: separador && j === separador ? 'separador' : null }, typeof x === 'number' ? formatoNumero(Math.abs(x) < 1e-13 ? 0 : x) : x))))));
 }
 
 /** Representación de cualquier valor del resultado. */
@@ -76,35 +79,53 @@ function redimensionarVector(v, n) {
   return Array.from({ length: n }, (_, i) => v[i] ?? '0');
 }
 
-/** Editor de matriz: selector de tamaño + rejilla de entradas. */
-function editorMatriz(param, valor, alCambiarTam, alEditar) {
-  const n = valor.length;
-  const selector = h('select', {
-    'aria-label': `Tamaño de ${param.etiqueta}`,
-    onchange: (e) => alCambiarTam(Number(e.target.value)),
-  }, Array.from({ length: TAM_MAX - TAM_MIN + 1 }, (_, k) => {
-    const t = k + TAM_MIN;
-    return h('option', { value: t, selected: t === n }, `${t} × ${t}`);
-  }));
-  const rejilla = h('div', { class: 'rejilla', style: `grid-template-columns: repeat(${n}, minmax(3.5rem, 1fr))` },
-    valor.flatMap((fila, i) => fila.map((x, j) => h('input', {
-      type: 'text', inputmode: 'decimal', value: x, 'aria-label': `${param.clave}${i + 1}${j + 1}`,
-      oninput: (e) => alEditar(i, j, e.target.value),
-    }))));
-  return h('div', { class: 'campo campo-ancho' },
-    h('div', { class: 'campo-titulo' }, h('span', {}, param.etiqueta), selector),
-    rejilla);
+/** Mueve el foco entre las celdas de una rejilla con las flechas y Enter. */
+function navegarCeldas(e, rejilla, n) {
+  const celdas = [...rejilla.querySelectorAll('input')];
+  const i = celdas.indexOf(e.target);
+  const { selectionStart: ini, selectionEnd: fin, value } = e.target;
+  let destino = -1;
+  if (e.key === 'ArrowUp') destino = i - n;
+  else if (e.key === 'ArrowDown') destino = i + n;
+  else if (e.key === 'ArrowLeft' && ini === 0 && fin === 0) destino = i - 1;
+  else if (e.key === 'ArrowRight' && ini === value.length) destino = i + 1;
+  else if (e.key === 'Enter') destino = i + 1;
+  if (destino < 0 || destino >= celdas.length) return;
+  e.preventDefault();
+  celdas[destino].focus();
+  celdas[destino].select();
 }
 
-/** Editor de vector (se dibuja como columna horizontal). */
-function editorVector(param, valor, alEditar) {
+/** Editor de matriz: botones + y − para el tamaño y rejilla de celdas entre paréntesis. */
+function editorMatriz(param, valor, alCambiarTam, alEditar) {
+  const n = valor.length;
+  const rejilla = h('div', { class: 'rejilla celdas', style: `grid-template-columns: repeat(${n}, 5.5rem)` },
+    valor.flatMap((fila, i) => fila.map((x, j) => h('input', {
+      type: 'text', inputmode: 'decimal', value: x, 'aria-label': `${param.clave} fila ${i + 1}, columna ${j + 1}`,
+      oninput: (e) => alEditar(i, j, e.target.value),
+    }))));
+  rejilla.addEventListener('keydown', (e) => navegarCeldas(e, rejilla, n));
+  const tamano = h('div', { class: 'tamano', role: 'group', 'aria-label': `Tamaño de ${param.etiqueta}` },
+    h('span', { class: 'tamano-texto' }, `Celdas: ${n} × ${n}`),
+    h('button', { type: 'button', class: 'boton-tamano', title: 'Agregar una fila y una columna', 'aria-label': 'Agregar celdas', disabled: n >= TAM_MAX, onclick: () => alCambiarTam(n + 1) }, '+'),
+    h('button', { type: 'button', class: 'boton-tamano', title: 'Quitar una fila y una columna', 'aria-label': 'Quitar celdas', disabled: n <= TAM_MIN, onclick: () => alCambiarTam(n - 1) }, '−'));
   return h('div', { class: 'campo campo-ancho' },
-    h('span', { class: 'campo-titulo' }, param.etiqueta),
-    h('div', { class: 'rejilla', style: `grid-template-columns: repeat(${valor.length}, minmax(3.5rem, 1fr))` },
-      valor.map((x, i) => h('input', {
-        type: 'text', inputmode: 'decimal', value: x, 'aria-label': `${param.clave}${i + 1}`,
-        oninput: (e) => alEditar(i, e.target.value),
-      }))));
+    h('div', { class: 'campo-titulo' }, h('span', {}, `${param.etiqueta}:`), tamano),
+    h('div', { class: 'entre-parentesis' }, rejilla),
+    h('p', { class: 'ayuda-celdas' }, 'Usa las flechas o Enter para moverte entre las celdas. Acepta fracciones y expresiones: 1/3, -2.5, sqrt(2).'));
+}
+
+/** Editor de vector (se dibuja como fila de celdas). */
+function editorVector(param, valor, alEditar) {
+  const rejilla = h('div', { class: 'rejilla celdas', style: `grid-template-columns: repeat(${valor.length}, 5.5rem)` },
+    valor.map((x, i) => h('input', {
+      type: 'text', inputmode: 'decimal', value: x, 'aria-label': `${param.clave}${i + 1}`,
+      oninput: (e) => alEditar(i, e.target.value),
+    })));
+  rejilla.addEventListener('keydown', (e) => navegarCeldas(e, rejilla, valor.length));
+  return h('div', { class: 'campo campo-ancho' },
+    h('span', { class: 'campo-titulo' }, `${param.etiqueta}:`),
+    h('div', { class: 'entre-parentesis' }, rejilla));
 }
 
 /** Campo simple: número, entero, lista, función u opciones. */
